@@ -10,20 +10,23 @@ import UIKit
 import AVFoundation
 
 
-class PlaySoundsViewController: UIViewController, AVAudioRecorderDelegate {
+class PlaySoundsViewController: UIViewController {
     
     var audioPlayer: AVAudioPlayer!
+    var audioEngine: AVAudioEngine!
+    var audioFile: AVAudioFile!
+    var audioData: RecordedAudio!
     
-    @IBOutlet weak var playSlowButton: UIButton!
-    @IBOutlet weak var stopButton: UIButton!
-    
-    var audioFile: NSURL?
+    let VADER: Float = -1000.0
+    let CHIPMUNK: Float = 1500.0
     
     @IBAction func stopAudio(sender: UIButton) {
         println("Stop playing audio.")
         
-        if audioPlayer.playing {
+        if (audioPlayer.playing || audioEngine.running) {
+            audioEngine.stop()
             audioPlayer.stop()
+            audioEngine.reset()
         }
     }
     
@@ -47,24 +50,113 @@ class PlaySoundsViewController: UIViewController, AVAudioRecorderDelegate {
         }
     }
     
-    func playAudioWithRate(rate:Float)
+    @IBAction func PlayChipmunkSoundButton(sender: UIButton) {
+        println("Play Chipmunk Sound.")
+
+        if (audioPlayer != nil) {
+            playAudioWithVariablePitch(CHIPMUNK)
+
+        } else {
+            println("Cannot play audio.")
+        }
+    }
+    
+    @IBAction func PlayDarthVaderSoundButton(sender: UIButton) {
+        println("Play Darth Vader Sound.")
+        
+        if (audioPlayer != nil) {
+            playAudioWithVariablePitch(VADER)
+            
+        } else {
+            println("Cannot play audio.")
+        }
+    }
+    
+    @IBAction func PlaySoundEffectButton(sender: UIButton) {
+        println("Play Darth Vader Sound.")
+        
+        if (audioPlayer != nil) {
+            playWithSoundEffect()
+            
+        } else {
+            println("Cannot play audio.")
+        }
+    }
+    
+    func playAudioWithVariablePitch(pitch: Float)
     {
         audioPlayer.stop()
+        audioEngine.stop()
+        audioEngine.reset()
+        
+        audioFile = AVAudioFile(forReading: audioData.filePathUrl, error: nil)
+        
+        if (audioFile != nil) {
+            var audioNode = AVAudioPlayerNode()
+            audioEngine.attachNode(audioNode)
+            
+            var audioPitchEffect = AVAudioUnitTimePitch()
+            audioPitchEffect.pitch = pitch
+            audioEngine.attachNode(audioPitchEffect)
+            
+            audioEngine.connect(audioNode, to: audioPitchEffect, format: nil)
+            audioEngine.connect(audioPitchEffect, to: audioEngine.outputNode, format: nil)
+            
+            audioNode.scheduleFile(audioFile, atTime: nil, completionHandler: nil)
+            audioEngine.startAndReturnError(nil)
+            audioNode.play()
+        }
+    }
+    
+    func playWithSoundEffect()
+    {
+        audioPlayer.stop()
+        audioEngine.stop()
+        audioEngine.reset()
+        
+        var randNumber = arc4random_uniform(2)
+        println(randNumber)
+        
+        audioFile = AVAudioFile(forReading: audioData.filePathUrl, error: nil)
+        
+        var audioEffectNode = AVAudioPlayerNode()
+        audioEngine.attachNode(audioEffectNode)
+        
+        var audioEffect = AVAudioUnitDistortion()
+        audioEffect.loadFactoryPreset(.MultiEcho2)
+        
+//        var audioEffect = AVAudioUnitReverb()
+//        audioEffect.loadFactoryPreset(.Cathedral)
+        
+        audioEngine.attachNode(audioEffect)
+        
+        audioEngine.connect(audioEffectNode, to: audioEffect, format: nil)
+        audioEngine.connect(audioEffect, to: audioEngine.outputNode, format: nil)
+        
+        audioEffectNode.scheduleFile(audioFile, atTime: nil, completionHandler: nil)
+        audioEngine.startAndReturnError(nil)
+        audioEffectNode.play()
+    }
+    
+    func playAudioWithRate(rate:Float)
+    {
+        audioEngine.stop()
+        audioPlayer.stop()
+        audioEngine.reset()
         audioPlayer.rate = rate
         audioPlayer.currentTime = 0
         audioPlayer.play()
     }
-
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        println(audioFile)
-        
-        if let recordedAudio = audioFile {
-            audioPlayer = AVAudioPlayer(contentsOfURL: recordedAudio, error: nil)
+        if audioData != nil {
+            audioPlayer = AVAudioPlayer(contentsOfURL: audioData.filePathUrl , error: nil)
             audioPlayer.enableRate = true
             audioPlayer.prepareToPlay()
+            
+            audioEngine = AVAudioEngine()
         }
         else {
             println("No audio file found.")
@@ -88,16 +180,5 @@ class PlaySoundsViewController: UIViewController, AVAudioRecorderDelegate {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
     }
-    
-
-    /*
-    // MARK: - Navigation
-
-    // In a storyboard-based application, you will often want to do a little preparation before navigation
-    override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
-        // Get the new view controller using segue.destinationViewController.
-        // Pass the selected object to the new view controller.
-    }
-    */
 
 }

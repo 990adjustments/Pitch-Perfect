@@ -10,16 +10,18 @@ import AVFoundation
 import UIKit
 
 
-class RecordsSoundsViewController: UIViewController {
+class RecordsSoundsViewController: UIViewController, AVAudioRecorderDelegate {
 
     @IBOutlet weak var recordingLabel: UILabel!
     @IBOutlet weak var microphoneButton: UIButton!
-    @IBOutlet weak var recordButton: UIButton!
+    @IBOutlet weak var stopRecordingButton: UIButton!
     @IBOutlet weak var audioBars: UIImageView!
+    @IBOutlet weak var helperLabel: UILabel!
     
     var imageArray:[UIImage] = []
     var audioRecorder:AVAudioRecorder!
     var filePath: NSURL?
+    var recordedAudio: RecordedAudio!
     
     @IBAction func recordAudio(sender: UIButton) {
         println("Recording in progress...")
@@ -28,11 +30,17 @@ class RecordsSoundsViewController: UIViewController {
         microphoneButton.setImage(img_on, forState: .Normal)
         microphoneButton.enabled = false
         
-        recordingLabel.hidden = false
-        recordButton.hidden = false
+        //recordingLabel.hidden = false
+        //stopRecordingButton.hidden = false
         
         audioBars.hidden = false
         audioBars.startAnimating()
+        
+        UIView.animateWithDuration(0.25, animations: { () -> Void in
+            self.helperLabel.alpha = 0
+            self.stopRecordingButton.alpha = 1.0
+            self.recordingLabel.alpha = 1.0
+        })
         
         // Start recording session
         audioRecorder.record()
@@ -40,17 +48,23 @@ class RecordsSoundsViewController: UIViewController {
     }
     
     @IBAction func stopRecording(sender: UIButton) {
-        println("Stop recording.")
+        println("Recording stopped.")
         
         let img_off = UIImage(named: "microphone-off.pdf")
         microphoneButton.setImage(img_off, forState: .Normal)
         microphoneButton.enabled = true
 
-        recordingLabel.hidden = true
-        recordButton.hidden = true
+        //recordingLabel.hidden = true
+        //stopRecordingButton.hidden = true
         
         audioBars.hidden = true
         audioBars.stopAnimating()
+        
+        UIView.animateWithDuration(0.25, animations: { () -> Void in
+            self.helperLabel.alpha = 1.0
+            self.stopRecordingButton.alpha = 0
+            self.recordingLabel.alpha = 0
+        })
         
         // Stop recording session
         audioRecorder.stop()
@@ -63,8 +77,8 @@ class RecordsSoundsViewController: UIViewController {
         super.viewDidLoad()
         
         // Load animation sequence
-        for imgFrame in 0...20 {
-            var img = UIImage(named: "audioBars\(imgFrame).png")
+        for imgFrame in 0...42 {
+            var img = UIImage(named: "radioWaves\(imgFrame).png")
             
             if let frame = img {
                 imageArray.append(img!)
@@ -75,7 +89,12 @@ class RecordsSoundsViewController: UIViewController {
         
         audioBars.animationImages = imageArray
         audioBars.animationRepeatCount = 0
-        audioBars.animationDuration = 0.6
+        audioBars.animationDuration = 1.0
+        
+        stopRecordingButton.alpha = 0
+        recordingLabel.alpha = 0
+        helperLabel.alpha = 1.0
+        audioBars.hidden = true
         
         prepareRecordSession()
     }
@@ -83,9 +102,9 @@ class RecordsSoundsViewController: UIViewController {
     func prepareRecordSession()
     {
         var fileManager = NSFileManager.defaultManager()
-        //let dirPath = NSSearchPathForDirectoriesInDomains(.DocumentDirectory, .UserDomainMask, true)[0] as String
-        var dirPath: NSURL = fileManager.URLsForDirectory(.DocumentDirectory, inDomains: .UserDomainMask)[0] as NSURL
-        let dirPathString = dirPath.absoluteString
+        let dirPath = NSSearchPathForDirectoriesInDomains(.DocumentDirectory, .UserDomainMask, true)[0] as String
+        //var dirPath: NSURL = fileManager.URLsForDirectory(.DocumentDirectory, inDomains: .UserDomainMask)[0] as NSURL
+        //let dirURL = dirPath.absoluteString
         //print(dirURL)
         
         let currentTime = NSDate()
@@ -93,8 +112,8 @@ class RecordsSoundsViewController: UIViewController {
         formatter.dateFormat = "ddMMyyyy-HHmmss"
         
         let recordingName = formatter.stringFromDate(currentTime) + ".wav"
-        //let pathArray = [dirPath, recordingName]
-        let pathArray = [dirPathString!, recordingName]
+        let pathArray = [dirPath, recordingName]
+        //let pathArray = [dir2Path, recordingName]
         filePath = NSURL.fileURLWithPathComponents(pathArray)
 
         //println(filePath)
@@ -104,25 +123,58 @@ class RecordsSoundsViewController: UIViewController {
             session.setCategory(AVAudioSessionCategoryPlayAndRecord, error: nil)
             
             audioRecorder = AVAudioRecorder(URL: audioFilePath, settings: nil, error: nil)
+            audioRecorder.delegate = self
             audioRecorder.meteringEnabled = true
             audioRecorder.prepareToRecord()
         }
         else {
             println("Unable to create file path.")
+            stopRecordingButton.alpha = 0
+            recordingLabel.alpha = 0
+            helperLabel.alpha = 1.0
+            audioBars.hidden = true
+            audioBars.stopAnimating()
         }
     }
     
     override func viewWillAppear(animated: Bool) {
         super.viewWillAppear(animated);
         
-        recordButton.hidden = true
+        stopRecordingButton.alpha = 0
+        recordingLabel.alpha = 0
+        helperLabel.alpha = 1.0
         audioBars.hidden = true
+        
+        //stopRecordingButton.hidden = true
+        //helperLabel.hidden = false
+    }
+    
+    func audioRecorderDidFinishRecording(recorder: AVAudioRecorder!, successfully flag: Bool) {
+        if (flag) {
+            recordedAudio = RecordedAudio(filePathUrl: recorder.url, title: recorder.url.lastPathComponent!)
+            //recordedAudio.filePathUrl = recorder.url
+            //recordedAudio.title = recorder.url.lastPathComponent
+            
+            performSegueWithIdentifier("playSounds", sender: recordedAudio)
+        }
+        else {
+            println("Audio did not finish recording.")
+            
+        }
+        
+//        if (flag) {
+//            println("Audio recording complete.")
+//            performSegueWithIdentifier("playSounds", sender: self)
+//        }
     }
     
     override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
+        println("Prepare for segue")
         if (segue.identifier == "playSounds") {
-            var vc = segue.destinationViewController as PlaySoundsViewController
-            vc.audioFile = filePath
+            var vc: PlaySoundsViewController = segue.destinationViewController as PlaySoundsViewController
+            
+            let data = sender as RecordedAudio
+            vc.audioData = data
         }
     }
 
