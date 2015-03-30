@@ -1,17 +1,8 @@
 {
   "images" : [
     {
-      "idiom" : "iphone",
-      "scale" : "1x"
-    },
-    {
-      "idiom" : "iphone",
-      "scale" : "2x",
-      "filename" : "chipmunk@2x~iphone.png"
-    },
-    {
-      "idiom" : "iphone",
-      "scale" : "3x"
+      "idiom" : "universal",
+      "filename" : "chipmunk.pdf"
     }
   ],
   "info" : {

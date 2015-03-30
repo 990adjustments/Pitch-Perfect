@@ -73,10 +73,30 @@ class PlaySoundsViewController: UIViewController {
     }
     
     @IBAction func PlaySoundEffectButton(sender: UIButton) {
-        println("Play Darth Vader Sound.")
+        println("Play Echo Sound Effect.")
         
         if (audioPlayer != nil) {
-            playWithSoundEffect()
+            var audioEffect = AVAudioUnitDistortion()
+            audioEffect.loadFactoryPreset(.MultiEcho2)
+            
+            //playWithSoundEffect()
+            playSoundEffect(audioEffect)
+            
+        } else {
+            println("Cannot play audio.")
+        }
+    }
+    
+    @IBAction func playCathedralEffect(sender: UIButton) {
+        println("Play Cathedral Sound Effect.")
+
+        if (audioPlayer != nil) {
+            var audioEffect = AVAudioUnitReverb()
+            audioEffect.wetDryMix = 50.0
+            audioEffect.loadFactoryPreset(.Cathedral)
+            
+            //playWithSoundWithReverb()
+            playSoundEffect(audioEffect)
             
         } else {
             println("Cannot play audio.")
@@ -108,30 +128,21 @@ class PlaySoundsViewController: UIViewController {
         }
     }
     
-    func playWithSoundEffect()
+    func playSoundEffect(effect: AVAudioNode)
     {
         audioPlayer.stop()
         audioEngine.stop()
         audioEngine.reset()
-        
-        var randNumber = arc4random_uniform(2)
-        println(randNumber)
         
         audioFile = AVAudioFile(forReading: audioData.filePathUrl, error: nil)
         
         var audioEffectNode = AVAudioPlayerNode()
         audioEngine.attachNode(audioEffectNode)
         
-        var audioEffect = AVAudioUnitDistortion()
-        audioEffect.loadFactoryPreset(.MultiEcho2)
+        audioEngine.attachNode(effect)
         
-//        var audioEffect = AVAudioUnitReverb()
-//        audioEffect.loadFactoryPreset(.Cathedral)
-        
-        audioEngine.attachNode(audioEffect)
-        
-        audioEngine.connect(audioEffectNode, to: audioEffect, format: nil)
-        audioEngine.connect(audioEffect, to: audioEngine.outputNode, format: nil)
+        audioEngine.connect(audioEffectNode, to: effect, format: nil)
+        audioEngine.connect(effect, to: audioEngine.outputNode, format: nil)
         
         audioEffectNode.scheduleFile(audioFile, atTime: nil, completionHandler: nil)
         audioEngine.startAndReturnError(nil)
@@ -161,19 +172,6 @@ class PlaySoundsViewController: UIViewController {
         else {
             println("No audio file found.")
         }
-        
-//        let filePath = NSBundle.mainBundle().pathForResource("movie_quote", ofType: "mp3")
-//        
-//        if let soundFile = filePath {
-//            let mp3file = NSURL(fileURLWithPath: soundFile)
-//            
-//            
-//            audioPlayer = AVAudioPlayer(contentsOfURL: audioFile, error: nil)
-//            audioPlayer.enableRate = true
-//            audioPlayer.prepareToPlay()
-//        } else {
-//            println("Sound file not valid.")
-//        }
     }
 
     override func didReceiveMemoryWarning() {

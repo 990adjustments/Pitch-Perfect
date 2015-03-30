@@ -17,45 +17,75 @@ class RecordsSoundsViewController: UIViewController, AVAudioRecorderDelegate {
     @IBOutlet weak var stopRecordingButton: UIButton!
     @IBOutlet weak var audioBars: UIImageView!
     @IBOutlet weak var helperLabel: UILabel!
+    @IBOutlet weak var pauseLabel: UILabel!
+    @IBOutlet weak var pauseRecordingButton: UIButton!
     
     var imageArray:[UIImage] = []
     var audioRecorder:AVAudioRecorder!
     var filePath: NSURL?
     var recordedAudio: RecordedAudio!
+    var paused: Bool = false
+
     
     @IBAction func recordAudio(sender: UIButton) {
         println("Recording in progress...")
         
         let img_on = UIImage(named: "microphone-on.pdf")
-        microphoneButton.setImage(img_on, forState: .Normal)
-        microphoneButton.enabled = false
+        swapImage(img_on!, on: false)
         
-        //recordingLabel.hidden = false
-        //stopRecordingButton.hidden = false
-        
+        pauseRecordingButton.enabled = true
         audioBars.hidden = false
         audioBars.startAnimating()
         
         UIView.animateWithDuration(0.25, animations: { () -> Void in
             self.helperLabel.alpha = 0
             self.stopRecordingButton.alpha = 1.0
+            self.pauseRecordingButton.alpha = 1.0
             self.recordingLabel.alpha = 1.0
+            
+            if (self.paused) {
+                self.pauseLabel.alpha = 0
+            }
         })
-        
+
         // Start recording session
         audioRecorder.record()
+        
+        paused = false
 
+    }
+    
+    @IBAction func pauseRecording(sender: AnyObject) {
+        println("Recording paused.")
+        
+        // Deal multiple pause button touches
+        if (!pauseRecordingButton.enabled) {
+            return
+        }
+        
+        let img_off = UIImage(named: "microphone-off.pdf")
+        swapImage(img_off!, on: true)
+
+        audioBars.hidden = true
+        audioBars.stopAnimating()
+        paused = true
+        
+        UIView.animateWithDuration(0.25, animations: { () -> Void in
+            self.pauseLabel.alpha = 1.0
+            self.recordingLabel.alpha = 0
+        })
+        
+        // Stop recording session
+        audioRecorder.pause()
+        
+        pauseRecordingButton.enabled = false
     }
     
     @IBAction func stopRecording(sender: UIButton) {
         println("Recording stopped.")
         
         let img_off = UIImage(named: "microphone-off.pdf")
-        microphoneButton.setImage(img_off, forState: .Normal)
-        microphoneButton.enabled = true
-
-        //recordingLabel.hidden = true
-        //stopRecordingButton.hidden = true
+        swapImage(img_off!, on: true)
         
         audioBars.hidden = true
         audioBars.stopAnimating()
@@ -63,6 +93,7 @@ class RecordsSoundsViewController: UIViewController, AVAudioRecorderDelegate {
         UIView.animateWithDuration(0.25, animations: { () -> Void in
             self.helperLabel.alpha = 1.0
             self.stopRecordingButton.alpha = 0
+            self.pauseRecordingButton.alpha = 0
             self.recordingLabel.alpha = 0
         })
         
@@ -71,10 +102,18 @@ class RecordsSoundsViewController: UIViewController, AVAudioRecorderDelegate {
         
         var session = AVAudioSession.sharedInstance()
         session.setActive(false, error: nil)
-        
     }
+    
+    func swapImage(img: UIImage, on: Bool) {
+        self.microphoneButton.setImage(img, forState: .Normal)
+        self.microphoneButton.enabled = on
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        // Set Navigation Bar attributes
+        navigationController?.navigationBar.titleTextAttributes = [NSForegroundColorAttributeName: UIColor(red: 1.0, green: 35.0/255.0, blue: 70.0/255.0, alpha: 1.0), NSFontAttributeName : UIFont.systemFontOfSize(20)]
         
         // Load animation sequence
         for imgFrame in 0...42 {
@@ -92,7 +131,9 @@ class RecordsSoundsViewController: UIViewController, AVAudioRecorderDelegate {
         audioBars.animationDuration = 1.0
         
         stopRecordingButton.alpha = 0
+        pauseRecordingButton.alpha = 0
         recordingLabel.alpha = 0
+        pauseLabel.alpha = 0
         helperLabel.alpha = 1.0
         audioBars.hidden = true
         
@@ -101,11 +142,9 @@ class RecordsSoundsViewController: UIViewController, AVAudioRecorderDelegate {
     
     func prepareRecordSession()
     {
+        // Set up path and name of audio file.
         var fileManager = NSFileManager.defaultManager()
         let dirPath = NSSearchPathForDirectoriesInDomains(.DocumentDirectory, .UserDomainMask, true)[0] as String
-        //var dirPath: NSURL = fileManager.URLsForDirectory(.DocumentDirectory, inDomains: .UserDomainMask)[0] as NSURL
-        //let dirURL = dirPath.absoluteString
-        //print(dirURL)
         
         let currentTime = NSDate()
         let formatter = NSDateFormatter()
@@ -113,10 +152,7 @@ class RecordsSoundsViewController: UIViewController, AVAudioRecorderDelegate {
         
         let recordingName = formatter.stringFromDate(currentTime) + ".wav"
         let pathArray = [dirPath, recordingName]
-        //let pathArray = [dir2Path, recordingName]
         filePath = NSURL.fileURLWithPathComponents(pathArray)
-
-        //println(filePath)
         
         if let audioFilePath = filePath {
             var session = AVAudioSession.sharedInstance()
@@ -141,35 +177,25 @@ class RecordsSoundsViewController: UIViewController, AVAudioRecorderDelegate {
         super.viewWillAppear(animated);
         
         stopRecordingButton.alpha = 0
+        pauseRecordingButton.alpha = 0
+        pauseLabel.alpha = 0
         recordingLabel.alpha = 0
         helperLabel.alpha = 1.0
         audioBars.hidden = true
-        
-        //stopRecordingButton.hidden = true
-        //helperLabel.hidden = false
     }
     
     func audioRecorderDidFinishRecording(recorder: AVAudioRecorder!, successfully flag: Bool) {
         if (flag) {
             recordedAudio = RecordedAudio(filePathUrl: recorder.url, title: recorder.url.lastPathComponent!)
-            //recordedAudio.filePathUrl = recorder.url
-            //recordedAudio.title = recorder.url.lastPathComponent
-            
             performSegueWithIdentifier("playSounds", sender: recordedAudio)
         }
         else {
             println("Audio did not finish recording.")
-            
         }
-        
-//        if (flag) {
-//            println("Audio recording complete.")
-//            performSegueWithIdentifier("playSounds", sender: self)
-//        }
     }
     
     override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
-        println("Prepare for segue")
+        // Send data to PlaySoundsViewController
         if (segue.identifier == "playSounds") {
             var vc: PlaySoundsViewController = segue.destinationViewController as PlaySoundsViewController
             
